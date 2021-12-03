@@ -1,0 +1,1 @@
+#find /var/lib/apt/lists -type f | while IFS= read -r p; IFS=: read -r n x < "$p"; do case $n in Package) ;; *) continue; esac; { echo "List: $(echo "${p#/var/lib/apt/lists/}" | tr _ /)"; cat < "$p"; } | sed '1{h;d}; /^$/{g;s/$/\n/}'; done | less

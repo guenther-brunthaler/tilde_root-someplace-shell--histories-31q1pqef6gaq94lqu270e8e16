@@ -1,0 +1,4 @@
+# chroot jail delivery
+p() { chroot-jail-populate -d out "$@"; } # $(which); mkfs.ext4-customized 
+s() { (cd out && find | cpio -oH crc) | socat STDIN TCP4-LISTEN:1111,bind=xquad,reuseaddr; }
+pc() { local i; i=$#; while test $i != 0; do if test -e "$1"; then set -- "$@" "$1"; else set -- "$@" "`command -v -- "$1"`"; fi ; shift; i=`expr $i - 1` || break; done; p "$@"; }

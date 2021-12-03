@@ -1,0 +1,21 @@
+# Start.
+pushd ~gb/Dokumente/2y330/downloads/
+d=`date +%Y%m%d`; echo $d
+mkdir $d; cd $d
+adb devices
+adb shell ls -d /storage/sdcard1/Pictures/OpenCamera/* > f
+adb shell ls -d /storage/sdcard0/Recordings/* >> f
+adb shell ls -d /storage/sdcard1/Downloads/* >> f
+dos2unix f
+adb shell ls -l /storage/sdcard0/Recordings/* > amr-times.txt
+dos2unix amr-times.txt 
+cat amr-times.txt 
+joe f
+while IFS= read -r f; do adb pull "$f"; done < f
+while IFS= read -r f; do adb shell rm -- "$f"; done < f
+adb kill-server
+rm /tmp/adb.0.log 
+cd ..
+chown -R gb. $d
+popd
+# Finished.

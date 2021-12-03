@@ -1,0 +1,4 @@
+# Display completion percentage of a file descriptor where "max" will be the
+# expected ending file position.
+awk 'NR == 1 {printf "%.2f %%\n", $2 / max * 100}' max=256e9 /proc/27523/fdinfo/1
+watch -n8 awk \''NR == 1 {printf "%.2f %%\n", $2 / max * 100}'\' max=256e9 /proc/16557/fdinfo/0

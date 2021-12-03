@@ -1,0 +1,6 @@
+# Sync time, save CMOS-clock, dist-upgrade
+ntpd-busybox-fetch-time-once 
+hwclock -w
+apt-get update
+apt-get dist-upgrade --no-download --ignore-missing
+#debdelta-upgrade --deb-policy ""

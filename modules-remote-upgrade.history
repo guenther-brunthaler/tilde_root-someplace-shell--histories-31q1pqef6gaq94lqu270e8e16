@@ -1,0 +1,7 @@
+# Receive /lib/modules/ contents from some host, strip and pack it into .cpio.xz, then send result file listening at TCP:9999
+mkdir -m 700 /tmp/kmod && cd /tmp/kmod
+socat -u TCP4:xrpi2:9999 STDOUT | tar -x
+ls
+find * -name "*.ko" -exec strip -g {} +
+find * | LC_COLLATE=C sort | cpio -oH newc | xz -9c | socat -u STDIN TCP4-LISTEN:9999
+cd - && rm -rf /tmp/kmod
