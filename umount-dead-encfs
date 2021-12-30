@@ -1,0 +1,2 @@
+# Unmount all encfs brutally. This is sometimes needed if the control processes have crashed.
+mount |sed 's|^encfs on \(.*\) type fuse.*|\1|; t; d' | while read m; do fusermount -u $m; done
