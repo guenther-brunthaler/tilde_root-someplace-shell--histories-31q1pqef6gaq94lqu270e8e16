@@ -1,0 +1,2 @@
+# Save sorted list of all installed packages and their version numbers.
+aptitude search --disable-columns -F '%p %v' '~i' | sort > pkg-already-inst

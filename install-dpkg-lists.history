@@ -1,0 +1,3 @@
+# Non-iteractively install .deb's from list "ins" ignoring most problems
+> errors 
+date +%s > start; while read pf; do echo "*** $pf" && DEBIAN_FRONTEND=noninteractive dpkg -i --force-all --force-confold "$pf" || echo "$pf" >& 5; echo '### WAITING...' && sleep 3; done 5> errors < ins; date +%s > end; read start < start; read end < end; echo "run time was $(expr \( $end - $start \) / 60 ) minutes!"

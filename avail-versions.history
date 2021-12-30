@@ -1,0 +1,2 @@
+# Save sorted list of packages and versions in APT download cache.
+for pf in /var/cache/apt/archives/*.deb; do echo "`dpkg-deb -W "$pf"` $pf"; done | awk '{print $1 " " $2 " " $3}' | sort > pkg-avail

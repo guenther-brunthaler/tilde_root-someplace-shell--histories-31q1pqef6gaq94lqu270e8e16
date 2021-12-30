@@ -1,0 +1,3 @@
+# Assume /mnt shall be a mirror of /boot and show different files.
+find /boot -type f \( -path /boot -o -print \) | sort | while IFS= read -r s; do t=/mnt/${s#/boot/}; test -e "$t" && continue; echo cp -p -- "$s" "$t"; done # Show files missing in /mnt.
+find /boot -type f \( -path /boot -o -print \) | sort | while IFS= read -r s; do t=/mnt/${s#/boot/}; cmp -s -- "$s" "$t" && continue; echo "different: $t"; done # Show different files existing on both sides.

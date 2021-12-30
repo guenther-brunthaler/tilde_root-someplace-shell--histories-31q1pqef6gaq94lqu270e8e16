@@ -1,0 +1,39 @@
+# Migrate UIDs and GIDs in current subtree.
+# Files "./users" and "./groups" must be copies of old "/etc/passwd" and "/etc/group".
+# v2021.362
+# Start.
+find -nouser -ls | head
+oui=1003 ogi=$oui ni=0 # $ni is just the default
+grep :$oui: users; grep :$ogi: groups
+on= n=guest # optionally set old username for renaming
+ni=`uid-gid-derive-from-name $n`; echo "$n is $ni" # may comment out with ":"
+find -uid $ni | head # ensure none found
+find -uid $oui | head # will get new UID
+find -uid $oui -exec chown $ni {} + # change
+find -uid $ni | head # verify result
+find -gid $ni | head # ensure none found
+find -gid $ogi | head # will get new UID
+find -gid $ogi -exec chgrp $ni {} + # change
+find -gid $ni | head # verify result
+if test "$on"; then
+usermod -l "$n" "$on" # change old login name
+fi
+set -x
+if test "$on"; then
+groupmod -n "$n" "$on" # change old primary group name
+fi
+if grep "^$n:" /etc/group
+then
+groupmod -g $ni "$n" # change existing group ID
+else
+addgroup --gid $ni "$n" # create new users's primary group
+fi
+if grep "^$n:" /etc/passwd
+then
+usermod -u $ni "$n" # change existing user ID
+else
+pwgen-with-entropy-harvesting-as-base62 # use this as the password in next command
+adduser --uid $ni --gid $ni "$n" # create new user
+fi
+set +x
+# Done.
