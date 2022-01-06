@@ -2,7 +2,7 @@
 # Files "./users" and "./groups" must be copies of old "/etc/passwd" and "/etc/group".
 # v2022.6
 # Start.
-find '(' -nouser -o -nogroup ')' -ls | head
+find '(' -nouser -o -nogroup ')' -ls | less -F
 oui=1000 ogi=$oui nui= ngi=$nui # Define old UID/GID. Empty new $nui/$ngi will be calculated as hash IDs.
 echo "Name of the user with old UID $oui:"; grep :$oui: users
 echo "Name of the group with old GID $ogi:"; grep :$ogi: groups
