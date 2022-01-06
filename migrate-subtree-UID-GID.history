@@ -1,27 +1,36 @@
 # Migrate UIDs and GIDs in current subtree.
-# Files "./users" and "./groups" must be copies of old "/etc/passwd" and "/etc/group".
-# v2022.6
+# v2022.6.1
 # Start.
-find '(' -nouser -o -nogroup ')' -ls | less -F
-oui=1000 ogi=$oui nui= ngi=$nui # Define old UID/GID. Empty new $nui/$ngi will be calculated as hash IDs.
-echo "Name of the user with old UID $oui:"; grep :$oui: users
-echo "Name of the group with old GID $ogi:"; grep :$ogi: groups
-oun= nun=guest ogn=$oun ngn=$nun # Define new user/group names. Optionally set old username/groupname for renaming.
-test -z "$nui" && nui=`uid-gid-derive-from-name $nun`
-test -z "$ngi" && ngi=`uid-gid-derive-from-name $ngn`
-echo "User's '$nun' new UID=$nui and GID=$ngi."
-test "$nui" != "$oui" && echo "Ensure nothing is found:" && find -uid $nui -ls | head
-test "$nui" != "$oui" && echo "Some files with the old UID which will be changed:" && find -uid $oui -ls | head
-test "$nui" != "$oui" && echo "Now changing old UID $oui into new $nui." && find -uid $oui -exec chown $nui {} +
-test "$nui" != "$oui" && echo "Verify some results:" && find -uid $nui -ls | head
-test "$ngi" != "$ogi" && echo "Ensure nothing is found:" && find -gid $ngi -ls | head
-test "$ngi" != "$ogi" && echo "Some files with the old GID which will be changed:"  && find -gid $ogi -ls | head
-test "$ngi" != "$ogi" && echo "Now changing old GID $ogi into new $ngi."  && find -gid $ogi -exec chgrp $ngi {} +
-test "$ngi" != "$ogi" && echo "Verify some results:" && find -gid $ngi -ls | head
-if test "$oun"; then echo "Change old login name '$oun' into '$nun'."; usermod -l "$nun" "$oun"; fi
-set -x
-if test "$oun"; then echo "Change old primary group name '$ogn' into '$ngn'."; groupmod -n "$ngn" "$ogn"; fi
-if grep "^$ngn:" /etc/group; then echo "Change GID of existing group '$ngn' into $ngi."; groupmod -g $ngi "$ngn"; else echo "Create new users's '$nun' primary group '$ngn' with GID $ngi"; addgroup --gid $ngi "$ngn"; fi
-if grep "^$nun:" /etc/passwd; then echo "Change UID of existing user '$nun' into $nui"; usermod -u $nui "$nun"; else echo "Use the following as the password in next command:"; pwgen-with-entropy-harvesting-as-base62; echo "Create new user '$nun' with UID $nui and GID $ngi."; adduser --uid $nui --gid $ngi "$nun"; fi
-set +x
-# Done.
+test -f old_users || cp -v /etc/passwd old_users
+test -f old_groups || cp -v /etc/group old_groups
+maxsysui=300 maxsysgi=$maxsysui # Maximum system-user UID/GID (unsuitable for migration).
+nouid=65534 nogid=$nouid # Special "nobody"-user UID/GID.
+{ echo "Searching for known UIDs with numeric values suitable for replacement:"; awk < /etc/passwd -v maxsysui=$maxsysui -v nouid=$nouid -F : '$3 > maxsysui && $3 < 10000 || $3 >= 60000 && $3 != nouid {print $3 " " $1}'; } | less -F
+#{ echo "Searching for known GIDs with numeric values suitable for replacement:"; awk < /etc/group -v maxsysgi=$maxsysgi -v nogid=$nogid -F : '$3 > maxsysgi && $3 < 10000 || $3 >= 60000 && $3 != nogid {print $3 " " $1}'; } | less -F
+#{ echo "Searching for used but unnamed UIDs/GIDs:"; find '(' -nouser -o -nogroup ')' -ls; } | less -F
+#{ echo "Searching for used UIDs/GIDs with numeric values suitable for replacement:"; LC_TIME=C find . -exec ls -lnd -- {} + | awk -v maxsysui=$maxsysui -v maxsysgi=$maxsysgi -v nouid=$nouid -v nogid=$nogid '$3 > maxsysui && $3 < 10000 || $3 >= 60000 && $3 != nouid || $4 > maxsysgi && $4 < 10000 || $4 >= 60000 && $4 != nogid {u= $3; g= $4; for (i= 1; i < 7; ++i) $i= "x"; $7= u; $8= g; print}' | sed 's/^[x[:space:]]*//'; } | less -F
+oui=1000 ogi=$oui nui= ngi=$nui # Define old UID/GID. Empty new $nui/$ngi will be calculated as hash IDs if needed.
+test -z "$oui" && nui=; test -z "$ogi" && ngi= # Ensure consistency.
+test "$oui" && echo "Old name of the user with old UID $oui:" && grep :$oui: old_users
+test "$ogi" && echo "Old name of the group with old GID $ogi:" && grep :$ogi: old_groups
+oun= nun=guest ogn=$oun ngn=$nun # Define new user/group names. The x... variables will not be used for anything. Operations with empty names will be skipped. Optionally set old username/groupname for renaming.
+test -z "$nun" && oun=; test -z "$ngn" && ogn= # Ensure consistency.
+test -z "$nui" && test "$nun" && nui=`uid-gid-derive-from-name $nun`
+test -z "$ngi" && test "$ngn" && ngi=`uid-gid-derive-from-name $ngn`
+test "$nun" && test "$nui" && echo "User's '$nun' new UID is $nui."
+test "$nun" && test "$ngn" && echo "User's '$nun' primary group will be '$ngn'."
+test "$ngn" && test "$ngi" && echo "Group's '$ngn' new GID is $ngi."
+#test "$nui" != "$oui" && echo "Ensure nothing old uses the new UID $nui:" && find -uid $nui -ls | head
+#test "$nui" != "$oui" && echo "Some files with the old UID which will be changed:" && find -uid $oui -ls | head
+test "$nui" != "$oui" && echo "Now changing old UID $oui into new $nui." && find -uid $oui -exec chown -h $nui {} +
+#test "$nui" != "$oui" && echo "Verify some results:" && find -uid $nui -ls | head
+#test "$ngi" != "$ogi" && echo "Ensure nothing old uses the new GID $ngi:" && find -gid $ngi -ls | head
+#test "$ngi" != "$ogi" && echo "Some files with the old GID which will be changed:"  && find -gid $ogi -ls | head
+test "$ngi" != "$ogi" && echo "Now changing old GID $ogi into new $ngi." && find -gid $ogi -exec chgrp -h $ngi {} +
+#test "$ngi" != "$ogi" && echo "Verify some results:" && find -gid $ngi -ls | head
+if test "$oun" != "$nun"; then echo "Change old login name '$oun' to '$nun'."; usermod -l "$nun" "$oun"; fi
+if test "$ogn" && test "$ngn" != "$ngn"; then echo "Change old primary group name '$ogn' to '$ngn'."; groupmod -n "$ngn" "$ogn"; fi
+if test "$ngn" && test "$ngi" && grep "^$ngn:" /etc/group; then echo "Change GID of existing group '$ngn' into $ngi."; groupmod -g $ngi "$ngn"; else echo "Create new users's '$nun' primary group '$ngn' with GID $ngi"; addgroup --gid $ngi "$ngn"; fi
+test "$nun" && if grep "^$nun:" /etc/passwd; then if test "$nui"; then echo "Change UID of existing user '$nun' into $nui"; usermod -u $nui "$nun"; fi; elif test "$nui" && test "$ngi"; then echo "Use the following as the password in next command:"; pwgen-with-entropy-harvesting-as-base62; echo "Create new user '$nun' with UID $nui and GID $ngi."; adduser --uid $nui --gid $ngi "$nun"; fi
+#rm old_users old_groups # Cleanup: Uncomment this line only after all IDs have been already converted!
+# Finished.
