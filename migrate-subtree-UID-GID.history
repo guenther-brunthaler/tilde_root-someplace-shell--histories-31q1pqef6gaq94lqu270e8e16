@@ -1,5 +1,5 @@
 # Migrate UIDs and GIDs in current subtree.
-# v2022.7
+# v2022.7.1
 # Start.
 test -f old_users || cp -v /etc/passwd old_users
 test -f old_groups || cp -v /etc/group old_groups
@@ -8,7 +8,7 @@ nouid=65534 nogid=$nouid # Special "nobody"-user UID/GID.
 { echo "Searching for known UIDs with numeric values suitable for replacement:"; awk < /etc/passwd -v maxsysui=$maxsysui -v nouid=$nouid -F : '$3 > maxsysui && $3 < 10000 || $3 >= 60000 && $3 != nouid {print $3 " " $1}'; } | less -F
 #{ echo "Searching for known GIDs with numeric values suitable for replacement:"; awk < /etc/group -v maxsysgi=$maxsysgi -v nogid=$nogid -F : '$3 > maxsysgi && $3 < 10000 || $3 >= 60000 && $3 != nogid {print $3 " " $1}'; } | less -F
 #{ echo "Searching for used but unnamed UIDs/GIDs:"; find '(' -nouser -o -nogroup ')' -ls; } | less -F
-#{ echo "Searching for used UIDs/GIDs with numeric values suitable for replacement:"; find . -printf '%U %G\n' | awk -v maxsysui=$maxsysui -v maxsysgi=$maxsysgi -v nouid=$nouid -v nogid=$nogid '$1 > maxsysui && $1 < 10000 || $1 >= 60000 && $1 != nouid || $2 > maxsysgi && $2 < 10000 || $2 >= 60000 && $4 != nogid {print} | less -F
+#{ echo "Searching for used UIDs/GIDs with numeric values suitable for replacement:"; find . -printf '%U %G\n' | awk -v maxsysui=$maxsysui -v maxsysgi=$maxsysgi -v nouid=$nouid -v nogid=$nogid '$1 > maxsysui && $1 < 10000 || $1 >= 60000 && $1 != nouid || $2 > maxsysgi && $2 < 10000 || $2 >= 60000 && $2 != nogid {print}'; } | less -F
 oui=1000 ogi=$oui nui= ngi=$nui # Define old UID/GID. Empty new $nui/$ngi will be calculated as hash IDs if needed.
 test -z "$oui" && nui=; test -z "$ogi" && ngi= # Ensure consistency.
 test "$oui" && echo "Old name of the user with old UID $oui:" && grep :$oui: old_users
