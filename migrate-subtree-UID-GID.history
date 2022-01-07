@@ -1,6 +1,8 @@
 # Migrate UIDs and GIDs in current subtree.
-# v2022.6.1
+# v2022.6.2
 # Start.
+#{ echo "Search for filenames which will foil migration:" && find . -print0 | grep -z '[[:cntrl:]]' | xargs -0 printf '>>>%s<<<\n--------\n'; } | less -F
+#echo "Renaming all problematic files." && find . -print0 | grep -z '[[:cntrl:]]' | rename -v -0 's/([%[:cntrl:]])/uc join "", map "%$_", unpack "H*", $1/ge'
 test -f old_users || cp -v /etc/passwd old_users
 test -f old_groups || cp -v /etc/group old_groups
 maxsysui=300 maxsysgi=$maxsysui # Maximum system-user UID/GID (unsuitable for migration).
@@ -33,4 +35,5 @@ if test "$ogn" && test "$ngn" != "$ngn"; then echo "Change old primary group nam
 if test "$ngn" && test "$ngi" && grep "^$ngn:" /etc/group; then echo "Change GID of existing group '$ngn' into $ngi."; groupmod -g $ngi "$ngn"; else echo "Create new users's '$nun' primary group '$ngn' with GID $ngi"; addgroup --gid $ngi "$ngn"; fi
 test "$nun" && if grep "^$nun:" /etc/passwd; then if test "$nui"; then echo "Change UID of existing user '$nun' into $nui"; usermod -u $nui "$nun"; fi; elif test "$nui" && test "$ngi"; then echo "Use the following as the password in next command:"; pwgen-with-entropy-harvesting-as-base62; echo "Create new user '$nun' with UID $nui and GID $ngi."; adduser --uid $nui --gid $ngi "$nun"; fi
 #rm old_users old_groups # Cleanup: Uncomment this line only after all IDs have been already converted!
+#{ echo "Searching unused migrated UIDs suitable for removal:" && LC_TIME=C find . -exec ls -lnd -- {} + | LC_COLLATE=C { t=`mktemp` && trap 'rm -- "$t"' 0 HUP TERM INT QUIT && awk '$3 >= 10000 && $3 < 60000 {print $3}' | sort -u > "$t" && cut -d : -f 3 /etc/passwd | sort -u | comm -13 - "$t"; }; } | less -F
 # Finished.
