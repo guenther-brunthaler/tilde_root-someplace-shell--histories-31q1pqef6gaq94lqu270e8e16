@@ -1,8 +1,6 @@
 # Migrate UIDs and GIDs in current subtree.
-# v2022.6.2
+# v2022.7
 # Start.
-#{ echo "Search for filenames which will foil migration:" && find . -print0 | grep -z '[[:cntrl:]]' | xargs -0 printf '>>>%s<<<\n--------\n'; } | less -F
-#echo "Renaming all problematic files." && find . -print0 | grep -z '[[:cntrl:]]' | rename -v -0 's/([%[:cntrl:]])/uc join "", map "%$_", unpack "H*", $1/ge'
 test -f old_users || cp -v /etc/passwd old_users
 test -f old_groups || cp -v /etc/group old_groups
 maxsysui=300 maxsysgi=$maxsysui # Maximum system-user UID/GID (unsuitable for migration).
@@ -10,7 +8,7 @@ nouid=65534 nogid=$nouid # Special "nobody"-user UID/GID.
 { echo "Searching for known UIDs with numeric values suitable for replacement:"; awk < /etc/passwd -v maxsysui=$maxsysui -v nouid=$nouid -F : '$3 > maxsysui && $3 < 10000 || $3 >= 60000 && $3 != nouid {print $3 " " $1}'; } | less -F
 #{ echo "Searching for known GIDs with numeric values suitable for replacement:"; awk < /etc/group -v maxsysgi=$maxsysgi -v nogid=$nogid -F : '$3 > maxsysgi && $3 < 10000 || $3 >= 60000 && $3 != nogid {print $3 " " $1}'; } | less -F
 #{ echo "Searching for used but unnamed UIDs/GIDs:"; find '(' -nouser -o -nogroup ')' -ls; } | less -F
-#{ echo "Searching for used UIDs/GIDs with numeric values suitable for replacement:"; LC_TIME=C find . -exec ls -lnd -- {} + | awk -v maxsysui=$maxsysui -v maxsysgi=$maxsysgi -v nouid=$nouid -v nogid=$nogid '$3 > maxsysui && $3 < 10000 || $3 >= 60000 && $3 != nouid || $4 > maxsysgi && $4 < 10000 || $4 >= 60000 && $4 != nogid {u= $3; g= $4; for (i= 1; i < 7; ++i) $i= "x"; $7= u; $8= g; print}' | sed 's/^[x[:space:]]*//'; } | less -F
+#{ echo "Searching for used UIDs/GIDs with numeric values suitable for replacement:"; find . -printf '%U %G\n' | awk -v maxsysui=$maxsysui -v maxsysgi=$maxsysgi -v nouid=$nouid -v nogid=$nogid '$1 > maxsysui && $1 < 10000 || $1 >= 60000 && $1 != nouid || $2 > maxsysgi && $2 < 10000 || $2 >= 60000 && $4 != nogid {print} | less -F
 oui=1000 ogi=$oui nui= ngi=$nui # Define old UID/GID. Empty new $nui/$ngi will be calculated as hash IDs if needed.
 test -z "$oui" && nui=; test -z "$ogi" && ngi= # Ensure consistency.
 test "$oui" && echo "Old name of the user with old UID $oui:" && grep :$oui: old_users
@@ -35,5 +33,6 @@ if test "$ogn" && test "$ngn" != "$ngn"; then echo "Change old primary group nam
 if test "$ngn" && test "$ngi" && grep "^$ngn:" /etc/group; then echo "Change GID of existing group '$ngn' into $ngi."; groupmod -g $ngi "$ngn"; else echo "Create new users's '$nun' primary group '$ngn' with GID $ngi"; addgroup --gid $ngi "$ngn"; fi
 test "$nun" && if grep "^$nun:" /etc/passwd; then if test "$nui"; then echo "Change UID of existing user '$nun' into $nui"; usermod -u $nui "$nun"; fi; elif test "$nui" && test "$ngi"; then echo "Use the following as the password in next command:"; pwgen-with-entropy-harvesting-as-base62; echo "Create new user '$nun' with UID $nui and GID $ngi."; adduser --uid $nui --gid $ngi "$nun"; fi
 #rm old_users old_groups # Cleanup: Uncomment this line only after all IDs have been already converted!
-#{ echo "Searching unused migrated UIDs suitable for removal:" && LC_TIME=C find . -exec ls -lnd -- {} + | LC_COLLATE=C { t=`mktemp` && trap 'rm -- "$t"' 0 HUP TERM INT QUIT && awk '$3 >= 10000 && $3 < 60000 {print $3}' | sort -u > "$t" && cut -d : -f 3 /etc/passwd | sort -u | comm -13 - "$t"; }; } | less -F
+#{ echo "Searching unused migrated UIDs suitable for removal:" && find . -printf '%U\n' | awk '$0 >= 10000 && $0 < 60000 {print}' | { export LC_COLLATE=C && t1=`mktemp` t2= && trap 'test "$t2" && rm -- "$t2"; rm -- "$t1"' 0 HUP TERM INT QUIT && t2=`mktemp` && sort -u > "$t1" && cut -d : -f 3 /etc/passwd | sort -u | comm -23 - "$t1" | awk '$0 >= 10000 && $0 < 60000 {print}' > "$t2" && cut -d : -f 1,3 /etc/passwd | sort -t : -k 2,2 | join -o 1.2,1.1 -t : -1 2 - "$t2"; }; } | less -F
+#{ echo "Searching unused migrated GIDs suitable for removal:" && { find . -printf '%G\n' && cut -d : -f 4 /etc/passwd && awk -F : '$4 != "" {print $3}' /etc/group; } | awk '$0 >= 10000 && $0 < 60000 {print}' | { export LC_COLLATE=C && t1=`mktemp` t2= && trap 'test "$t2" && rm -- "$t2"; rm -- "$t1"' 0 HUP TERM INT QUIT && t2=`mktemp` && sort -u > "$t1" && cut -d : -f 3 /etc/group | awk '$0 >= 10000 && $0 < 60000 {print}' | sort -u | comm -23 - "$t1" > "$t2" && cut -d : -f 1,3 /etc/group | sort -t : -k 2,2 | join -o 1.2,1.1 -t : -1 2 - "$t2"; }; } | less -F
 # Finished.
